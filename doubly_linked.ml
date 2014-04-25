@@ -155,17 +155,8 @@ let rec slice xs i j =
       | Cons(_,_,t),_ -> slice (t()) (i-1) j
     end
 
-(* Better know which one to call *)
 let reverse xs =
-  begin match xs with
-    | Nil -> Nil
-    | Cons(prev,x,next) ->
-      begin match prev(),next() with
-        | Nil,_ -> march_to_end xs
-        | _,Nil -> march_to_start xs
-        | l,r -> failwith "reverse: cannot reverse from middle yet"
-      end
-  end
+  foldl (fun acc x -> cons x acc) (create ()) xs
 
 let to_list xs =
   foldr (fun x acc -> x :: acc) xs []
