@@ -1,5 +1,6 @@
 (* type 'a dublist = Nil | Cons of 'a dublist * 'a * 'a dublist *)
-type 'a dublist = Nil | Cons of (unit -> 'a dublist) * 'a * (unit -> 'a dublist)
+type 'a dublist = Nil | Cons of 'a tail * 'a * 'a tail
+and 'a tail = unit -> 'a dublist
 
 let create () = Nil
 
@@ -113,7 +114,36 @@ let map f xs =
   foldr (fun x acc -> (f x) :: acc) xs []
 
 let append xs ys =
-  foldr (fun x acc -> cons x acc) xs ys
+  begin match march_to_end xs, march_to_start ys with
+    | Nil,Nil -> Nil
+    | _,Nil -> xs
+    | Nil,_ -> ys
+    | Cons(prev_thunk,x',_), Cons(_,y',next_thunk) ->
+      (* The underscores should point to [Nil] *)
+      begin match prev_thunk(), next_thunk() with
+        | Nil, Nil -> 
+          (* Both are single-element lists. *)
+          let rec new1 = 
+            Cons((fun () -> Nil),x',(fun () -> new2))
+          and new2 =
+            Cons((fun () -> new1),y',(fun () -> Nil))
+          in new1
+        | Nil,Cons(_,_,_)
+        | Cons(_,_,_),Nil ->
+          failwith "I suspect these can be handled in unified way"
+        | Cons(prev_thunk,x,_), Cons(_,y,next_thunk) ->
+          let prev, next = prev_thunk(), next_thunk() in
+          let rec new1 =
+            Cons((fun () -> kcol prev new1), x, (fun () -> new2))
+          and new2 =
+            Cons((fun () -> new1), x', (fun () -> new3))
+          and new3 =
+            Cons((fun () -> new2), y', (fun () -> new4))
+          and new4 =
+            Cons((fun () -> new3), y, (fun () -> lock new4 next))
+          in march_to_start new1
+      end
+  end
   
 let rec slice xs i j =
   if j=0 then
