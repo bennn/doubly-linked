@@ -1,0 +1,8 @@
+*.cmi
+*.cmo
+*.cma
+*.out
+*~
+\#*
+*.swp
+*.tmp
