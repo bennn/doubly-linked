@@ -99,19 +99,41 @@ let rec foldl_aux f acc xs =
 let foldl f acc xs =
   foldl_aux f acc (march_to_start xs)
 
-let rec foldr_aux f xs acc =
+let rec foldr_aux f xs acc k =
   begin match xs with
-    | Nil -> acc
-    | Cons(_,x,t) -> f x (foldr_aux f (t()) acc)
+    | Nil -> k acc
+    | Cons(_,x,t) -> foldr_aux f (t()) acc (fun z -> k (f x z))
   end
 let foldr f xs acc = 
-  foldr_aux f (march_to_start xs) acc
+  foldr_aux f (march_to_start xs) acc (fun x -> x)
+
+
+let to_list xs =
+  foldr (fun x acc -> x :: acc) xs []
+
+let to_string xs =
+  Format.sprintf "< %s >" (String.concat " - " (map string_of_int xs))
+
+(* Faster way to create. Linear time. *)
+let from_list xs =
+  let singly_linked = 
+    List.fold_left (fun acc x -> 
+      Cons((fun () -> Nil), x, (fun () -> acc))) (create ()) (List.rev xs)
+  in
+  begin match singly_linked with
+    | Nil -> Nil
+    | Cons(_,x,next_thunk) ->
+      let next = next_thunk () in
+      let rec xs' =
+        Cons((fun () -> Nil),x,(fun () -> lock xs' next))
+      in xs'
+  end
 
 let length xs = foldl (fun acc _ -> 1 + acc) 0 xs
 let sum xs = foldl (+) 0 xs
 
 let map f xs =
-  foldr (fun x acc -> (f x) :: acc) xs []
+  from_list (foldr (fun x acc -> (f x) :: acc) xs [])
 
 let append xs ys =
   begin match march_to_end xs, march_to_start ys with
@@ -157,27 +179,6 @@ let rec slice xs i j =
 
 let reverse xs =
   foldl (fun acc x -> cons x acc) (create ()) xs
-
-let to_list xs =
-  foldr (fun x acc -> x :: acc) xs []
-
-let to_string xs =
-  Format.sprintf "< %s >" (String.concat " - " (map string_of_int xs))
-
-(* Faster way to create. Linear time. *)
-let from_list xs =
-  let singly_linked = 
-    List.fold_left (fun acc x -> 
-      Cons((fun () -> Nil), x, (fun () -> acc))) (create ()) (List.rev xs)
-  in
-  begin match singly_linked with
-    | Nil -> Nil
-    | Cons(_,x,next_thunk) ->
-      let next = next_thunk () in
-      let rec xs' =
-        Cons((fun () -> Nil),x,(fun () -> lock xs' next))
-      in xs'
-  end
 
 let make_circle (x:'a) =
   (* all bets are off... *)
