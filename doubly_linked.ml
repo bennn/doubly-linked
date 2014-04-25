@@ -164,6 +164,21 @@ let to_list xs =
 let to_string xs =
   Format.sprintf "< %s >" (String.concat " - " (map string_of_int xs))
 
+(* Faster way to create. Linear time. *)
+let from_list xs =
+  let singly_linked = 
+    List.fold_left (fun acc x -> 
+      Cons((fun () -> Nil), x, (fun () -> acc))) (create ()) (List.rev xs)
+  in
+  begin match singly_linked with
+    | Nil -> Nil
+    | Cons(_,x,next_thunk) ->
+      let next = next_thunk () in
+      let rec xs' =
+        Cons((fun () -> Nil),x,(fun () -> lock xs' next))
+      in xs'
+  end
+
 let make_circle (x:'a) =
   (* all bets are off... *)
   let rec xs = Cons((fun () -> xs),x,(fun () -> xs)) in
