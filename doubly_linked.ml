@@ -52,7 +52,7 @@ let rec lock prev xs =
         Cons((fun () -> prev), x, fun () -> lock xs' next')
       in xs'
   end
-
+(* Converse of [lock], creates a doubly-linked list with [next] as forward pointer. *)
 let rec kcol xs next =
   begin match xs with
     | Nil -> Nil
@@ -107,13 +107,6 @@ let rec foldr_aux f xs acc k =
 let foldr f xs acc = 
   foldr_aux f (march_to_start xs) acc (fun x -> x)
 
-
-let to_list xs =
-  foldr (fun x acc -> x :: acc) xs []
-
-let to_string xs =
-  Format.sprintf "< %s >" (String.concat " - " (map string_of_int xs))
-
 (* Faster way to create. Linear time. *)
 let from_list xs =
   let singly_linked = 
@@ -129,11 +122,17 @@ let from_list xs =
       in xs'
   end
 
+let to_list xs =
+  foldr (fun x acc -> x :: acc) xs []
+
 let length xs = foldl (fun acc _ -> 1 + acc) 0 xs
 let sum xs = foldl (+) 0 xs
 
 let map f xs =
   from_list (foldr (fun x acc -> (f x) :: acc) xs [])
+
+let to_string xs =
+  Format.sprintf "< %s >" (String.concat " - " (List.map string_of_int (to_list xs)))
 
 let append xs ys =
   begin match march_to_end xs, march_to_start ys with
@@ -179,6 +178,26 @@ let rec slice xs i j =
 
 let reverse xs =
   foldl (fun acc x -> cons x acc) (create ()) xs
+
+let rec merge_aux xs ys =
+  begin match xs with
+    | Nil -> ys
+    | Cons(_,x,next) -> Cons((fun () -> Nil), x, (fun () -> merge_aux ys (next())))
+  end
+
+let merge xs ys =
+  (* Put list elements in right order *)
+  let merged = merge_aux (march_to_start xs) (march_to_start ys) in
+  (* Lock list elements in place *)
+  begin match merged with
+    | Nil -> Nil
+    | Cons(_,x,next_thunk) ->
+      (* Third element should be [Nil] *)
+      let next = next_thunk () in
+      let rec xs' =
+        Cons((fun () -> Nil), x, (fun () -> lock xs' next))
+      in march_to_start xs'
+  end
 
 let make_circle (x:'a) =
   (* all bets are off... *)
