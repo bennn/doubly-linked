@@ -1,6 +1,7 @@
-(* type 'a dublist = Nil | Cons of 'a dublist * 'a * 'a dublist *)
 type 'a dublist = Nil | Cons of 'a tail * 'a * 'a tail
 and 'a tail = unit -> 'a dublist
+
+type 'a t = 'a dublist
 
 let create () = Nil
 
@@ -166,15 +167,20 @@ let append xs ys =
       end
   end
   
-let rec slice xs i j =
-  if j=0 then
+let rec slice_aux xs i j =
+  if j<2 then
     Nil
   else
     begin match xs,i with
       | Nil,_ -> failwith "slice: index outta bounds"
-      | Cons(_,h,t),0 -> cons h (slice (t()) i (j-1))
-      | Cons(_,_,t),_ -> slice (t()) (i-1) j
+      | Cons(_,h,t),0 -> cons h (slice_aux (t()) i (j-1))
+      | Cons(_,_,t),_ -> slice_aux (t()) (i-1) j
     end
+
+let slice xs i j =
+  if i < 0 || j < 0
+  then failwith "slice: negative index"
+  else slice_aux xs i j
 
 let reverse xs =
   foldl (fun acc x -> cons x acc) (create ()) xs
